@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple School Chat - Dark Theme</title>
+    <!-- Supabase JavaScript SDK einbinden -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* --- CSS: DARK THEME & ANIMATIONEN --- */
@@ -174,11 +175,12 @@
     <script>
         // --- JAVASCRIPT: LOGIK & SUPABASE ---
 
-        // 1. SUPABASE-KONFIGURATION (BITTE ERSETZEN)
-        const SUPABASE_URL = 'DEINE_SUPABASE_PROJEKT_URL'; // Beispiel: 'https://xyz123.supabase.co'
-        const SUPABASE_ANON_KEY = 'DEIN_ANON_PUBLIC_KEY'; // Beispiel: 'eyJhbGciOiJIUzI1NiI...'
+        // 1. SUPABASE-KONFIGURATION (Ihre eingefügten Daten)
+        const SUPABASE_URL = 'https://zkqveifenpcmjvsryirl.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_X6Pp1W2gkiyKVRw4IZLJuQ_k9YKeMAW';
 
-        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Initialisierung des Supabase-Clients
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // 2. DOM-ELEMENTE
         const chatBox = document.getElementById('chat-box');
@@ -195,7 +197,7 @@
             const date = new Date(timestamp);
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = String(date.getFullYear()).slice(2);
+            const year = String(date.getFullYear()).slice(-2);
             const hours = String(date.getHours()).padStart(2, '0');
             const minutes = String(date.getMinutes()).padStart(2, '0');
             return `${day}.${month}.${year} ${hours}:${minutes}`;
@@ -203,13 +205,14 @@
 
         function createMessageElement(message) {
             const div = document.createElement('div');
+            const textContent = message.message_text; 
+            
             div.className = 'message ' + (message.username === currentUsername ? 'self' : 'other');
             div.innerHTML = `
                 <div class="message-username">${message.username}</div>
-                ${message.message_text}
+                ${textContent}
                 <span class="message-timestamp">${formatTimestamp(message.created_at)}</span>
             `;
-            // Setzt die Animationsverzögerung basierend auf der Länge der Chatbox
             div.style.animationDelay = `${chatBox.children.length * 0.05}s`;
             return div;
         }
@@ -221,26 +224,26 @@
         // --- USER & AUTHENTIFIZIERUNG ---
 
         function setupUser() {
-            // Versucht, den Namen aus dem lokalen Speicher zu laden
             let storedUser = localStorage.getItem('chat_username');
             
             if (!storedUser) {
-                // Wenn kein Name gespeichert ist, frage den Benutzer
-                let newUser = prompt('Geben Sie Ihren gewünschten Benutzernamen (max. 15 Zeichen) ein:');
-                
-                if (newUser) {
-                    storedUser = newUser.trim().slice(0, 15);
-                    localStorage.setItem('chat_username', storedUser);
-                } else {
-                    // Fallback, wenn der Benutzer abbricht
-                    storedUser = 'Gast';
+                let newUser = '';
+                // Fragt solange, bis mindestens 2 Zeichen eingegeben werden
+                while (!newUser || newUser.trim().length < 2) {
+                    newUser = prompt('Geben Sie Ihren gewünschten Benutzernamen (mind. 2 Zeichen) ein:');
+                    if (!newUser) {
+                        newUser = 'Marie' + Math.floor(Math.random() * 999); // Fallback für Marie
+                        break;
+                    }
                 }
+                
+                storedUser = newUser.trim().slice(0, 15); 
+                localStorage.setItem('chat_username', storedUser);
             }
             
             currentUsername = storedUser;
             currentUsernameSpan.textContent = currentUsername;
             
-            // Setzt den Animations-Delay zurück
             chatBox.innerHTML = ''; 
         }
 
@@ -249,13 +252,13 @@
         async function fetchInitialMessages() {
             let { data: messages, error } = await supabase
                 .from('messages')
-                .select('*')
+                .select('username, message_text, created_at')
                 .order('created_at', { ascending: true })
-                .limit(50); // Lade die letzten 50 Nachrichten
+                .limit(50); 
 
             if (error) {
                 console.error('Fehler beim Laden der Nachrichten:', error);
-                chatBox.innerHTML = '<div style="color: red;">Fehler beim Laden der Nachrichten.</div>';
+                chatBox.innerHTML = '<div style="color: red; padding: 10px;">Fehler: Überprüfen Sie die RLS-SELECT-Policy.</div>';
                 return;
             }
 
@@ -268,9 +271,12 @@
         async function sendMessage() {
             const text = messageInput.value.trim();
 
-            if (!text) return; // Leere Nachrichten ignorieren
+            if (!text || currentUsername === 'Gast') {
+                alert('Bitte geben Sie eine Nachricht ein und melden Sie sich zuerst mit einem Benutzernamen an!');
+                return;
+            }
             
-            // 1. Nachricht an Supabase senden (INSERT)
+            // Nachricht an Supabase senden (INSERT)
             const { error } = await supabase
                 .from('messages')
                 .insert([
@@ -279,19 +285,17 @@
 
             if (error) {
                 console.error('Fehler beim Senden der Nachricht:', error);
-                alert('Nachricht konnte nicht gesendet werden.');
+                alert('Fehler beim Senden. (Check RLS INSERT Policy)');
             } else {
-                // 2. Eingabefeld leeren
                 messageInput.value = '';
             }
         }
 
         function setupRealtime() {
-            // 3. Abonniere den Channel für neue Nachrichten (REALTIME)
+            // Abonniere den Channel für neue Nachrichten (REALTIME)
             supabase
-                .channel('chat_room')
+                .channel('school_chat_updates') 
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-                    // Wird ausgelöst, wenn EINE NEUE Nachricht gesendet wird
                     const newMessage = payload.new;
                     chatBox.appendChild(createMessageElement(newMessage));
                     scrollToBottom();
@@ -310,10 +314,10 @@
         });
 
         resetButton.addEventListener('click', () => {
-            const confirmed = confirm('Möchten Sie Ihren Benutzernamen wirklich zurücksetzen und sich neu anmelden?');
+            const confirmed = confirm('Möchten Sie Ihren Benutzernamen wirklich zurücksetzen und sich neu anmelden? Dadurch wird Ihr lokaler Name gelöscht.');
             if (confirmed) {
-                localStorage.removeItem('chat_username');
-                window.location.reload(); // Seite neu laden, um SetupUser neu auszuführen
+                localStorage.removeItem('chat_username'); 
+                window.location.reload(); 
             }
         });
 
@@ -321,10 +325,6 @@
         // --- INITIALISIERUNG ---
         
         function init() {
-            if (SUPABASE_URL === 'https://zkqveifenpcmjvsryirl.supabase.co') {
-                alert('BITTE ERSETZE DIE SUPABASE_URL UND DEN KEY IM JAVASCRIPT-CODE!');
-                return;
-            }
             setupUser();
             fetchInitialMessages();
             setupRealtime();
