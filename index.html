@@ -3,48 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple School Chat - Dark Theme</title>
-    <!-- Supabase JavaScript SDK einbinden -->
+    <title>School Community Chat</title>
+    <!-- Supabase JavaScript SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Font Awesome für das Reset-Icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* --- CSS: DARK THEME & ANIMATIONEN --- */
+        /* --- CSS: SIMPLER, CLEANER, IPAD READY --- */
         :root {
-            --bg-color: #1a1a2e; /* Dunkler Hintergrund */
-            --chat-bg: #16213e; /* Etwas hellere Chatbox */
-            --text-color: #e0e0e0; /* Helle Textfarbe */
-            --accent-color: #00bcd4; /* Türkis Akzent */
-            --input-bg: #222e47;
-            --message-incoming: #3e4c6c;
+            --bg-color: #f0f2f5; /* Hellgrau (iPad-Hintergrund) */
+            --chat-bg: #ffffff; /* Weißer Chat-Bereich */
+            --text-color: #333333; /* Dunkler Text */
+            --primary-color: #4a90e2; /* Schul-Blau */
+            --secondary-color: #e6f0ff; /* Hellblau für eingehende Nachrichten */
         }
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif; /* iOS-ähnliche Schrift */
             background-color: var(--bg-color);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
+            overflow: hidden; /* Verhindert Body-Scroll */
         }
         #chat-container {
-            width: 90%;
-            max-width: 700px;
+            width: 100%;
+            height: 100%;
+            max-width: 900px; /* Tablet-optimierte Breite */
+            max-height: 850px;
             background-color: var(--chat-bg);
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            max-height: 95vh;
-            transition: all 0.3s ease;
         }
+        
+        /* HEADER MIT VERSTECKTER RESET-TASTE */
         #chat-header {
-            background-color: var(--accent-color);
-            color: black;
-            padding: 15px;
-            text-align: center;
-            font-size: 1.5em;
-            font-weight: bold;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.3em;
+            font-weight: 600;
         }
+        #reset-button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 1.2em;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        #reset-button:hover {
+            opacity: 1;
+        }
+
+        /* CHAT BOX */
         #chat-box {
             flex-grow: 1;
             padding: 15px;
@@ -56,25 +76,24 @@
         }
         .message {
             padding: 10px 15px;
-            border-radius: 20px;
-            max-width: 70%;
+            border-radius: 18px;
+            max-width: 75%;
             word-wrap: break-word;
-            opacity: 0;
-            transform: translateY(10px);
-            animation: fadeIn 0.3s forwards;
-            color: var(--text-color);
+            animation: slideIn 0.3s ease-out;
         }
-        @keyframes fadeIn {
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .message.self {
-            background-color: var(--accent-color);
-            color: black;
+            background-color: var(--primary-color);
+            color: white;
             align-self: flex-end;
             border-bottom-right-radius: 5px;
         }
         .message.other {
-            background-color: var(--message-incoming);
+            background-color: var(--secondary-color);
+            color: var(--text-color);
             align-self: flex-start;
             border-bottom-left-radius: 5px;
         }
@@ -82,7 +101,6 @@
             font-size: 0.85em;
             font-weight: bold;
             margin-bottom: 3px;
-            opacity: 0.8;
         }
         .message-timestamp {
             font-size: 0.7em;
@@ -92,83 +110,59 @@
             text-align: right;
         }
 
-        /* Eingabebereich */
+        /* INPUT BEREICH */
         .input-area {
             display: flex;
-            padding: 15px;
-            border-top: 1px solid #333;
+            padding: 10px 15px;
+            border-top: 1px solid #e0e0e0;
             background-color: var(--chat-bg);
             gap: 10px;
+            align-items: center;
         }
         #message-input {
             flex-grow: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 25px;
-            background-color: var(--input-bg);
-            color: var(--text-color);
+            padding: 10px 15px;
+            border: 1px solid #cccccc;
+            border-radius: 20px;
             font-size: 1em;
-            transition: box-shadow 0.2s ease;
+            transition: border-color 0.2s;
         }
         #message-input:focus {
             outline: none;
-            box-shadow: 0 0 0 3px var(--accent-color);
-        }
-        .button-group {
-            display: flex;
-            gap: 5px;
-        }
-        #send-button, #reset-button {
-            padding: 12px 18px;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.2s ease, transform 0.1s ease;
+            border-color: var(--primary-color);
         }
         #send-button {
-            background-color: var(--accent-color);
-            color: black;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s, transform 0.1s;
         }
         #send-button:hover {
-            background-color: #00a0b8;
-            transform: translateY(-1px);
+            background-color: #3a7bd5;
         }
-        #reset-button {
-            background-color: #e57373; /* Sanfter Rotton */
-            color: white;
-            font-size: 0.8em;
-        }
-        #reset-button:hover {
-            background-color: #d32f2f;
-        }
-
-        /* Username Anzeige */
-        #user-display {
-            padding: 8px 15px;
-            background-color: #3e4c6c;
-            color: var(--text-color);
-            text-align: right;
-            font-size: 0.9em;
-            border-bottom: 1px solid #333;
-        }
+        
     </style>
 </head>
 <body>
 
     <div id="chat-container">
-        <div id="chat-header">Simple School Chat</div>
-        <div id="user-display">Angemeldet als: <span id="current-username"></span></div>
+        <div id="chat-header">
+            <button id="reset-button" title="Benutzername zurücksetzen"><i class="fas fa-redo-alt"></i></button>
+            <span>School Community Chat</span>
+            <span id="current-username" style="font-size: 0.8em; font-weight: normal;"></span>
+        </div>
+
         <div id="chat-box">
             <!-- Nachrichten werden hier von JavaScript geladen -->
         </div>
         
         <div class="input-area">
             <input type="text" id="message-input" placeholder="Nachricht senden...">
-            <div class="button-group">
-                <button id="send-button">Senden</button>
-                <button id="reset-button">Reset User</button>
-            </div>
+            <button id="send-button">Senden</button>
         </div>
     </div>
 
@@ -179,7 +173,6 @@
         const SUPABASE_URL = 'https://zkqveifenpcmjvsryirl.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_X6Pp1W2gkiyKVRw4IZLJuQ_k9YKeMAW';
 
-        // Initialisierung des Supabase-Clients
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         // 2. DOM-ELEMENTE
@@ -190,6 +183,7 @@
         const currentUsernameSpan = document.getElementById('current-username');
 
         let currentUsername = '';
+        const MAX_MESSAGES = 100; // Maximale Nachrichten, die beim Start geladen werden
 
         // --- HILFSFUNKTIONEN ---
 
@@ -213,26 +207,29 @@
                 ${textContent}
                 <span class="message-timestamp">${formatTimestamp(message.created_at)}</span>
             `;
-            div.style.animationDelay = `${chatBox.children.length * 0.05}s`;
+            // Micro-Animation für neue Elemente
+            div.style.animationDelay = '0s';
             return div;
         }
 
         function scrollToBottom() {
-            chatBox.scrollTop = chatBox.scrollHeight;
+            // Verzögerung, um Rendering Zeit zu geben
+            setTimeout(() => {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 50); 
         }
 
-        // --- USER & AUTHENTIFIZIERUNG ---
+        // --- USER & AUTHENTIFIZIERUNG (LocalStorage) ---
 
         function setupUser() {
             let storedUser = localStorage.getItem('chat_username');
             
             if (!storedUser) {
                 let newUser = '';
-                // Fragt solange, bis mindestens 2 Zeichen eingegeben werden
                 while (!newUser || newUser.trim().length < 2) {
-                    newUser = prompt('Geben Sie Ihren gewünschten Benutzernamen (mind. 2 Zeichen) ein:');
+                    newUser = prompt('Willkommen! Bitte geben Sie Ihren Benutzernamen ein (mind. 2 Zeichen):');
                     if (!newUser) {
-                        newUser = 'Marie' + Math.floor(Math.random() * 999); // Fallback für Marie
+                        newUser = 'Gast' + Math.floor(Math.random() * 999); 
                         break;
                     }
                 }
@@ -242,7 +239,7 @@
             }
             
             currentUsername = storedUser;
-            currentUsernameSpan.textContent = currentUsername;
+            currentUsernameSpan.textContent = `Angemeldet als: ${currentUsername}`;
             
             chatBox.innerHTML = ''; 
         }
@@ -250,15 +247,16 @@
         // --- CHAT LOGIK ---
 
         async function fetchInitialMessages() {
+            // Lade die letzten X Nachrichten
             let { data: messages, error } = await supabase
                 .from('messages')
                 .select('username, message_text, created_at')
                 .order('created_at', { ascending: true })
-                .limit(50); 
+                .limit(MAX_MESSAGES); 
 
             if (error) {
                 console.error('Fehler beim Laden der Nachrichten:', error);
-                chatBox.innerHTML = '<div style="color: red; padding: 10px;">Fehler: Überprüfen Sie die RLS-SELECT-Policy.</div>';
+                chatBox.innerHTML = '<div style="color: red; padding: 10px;">Fehler: Konnte den Nachrichtenverlauf nicht laden. Bitte RLS-SELECT-Policy prüfen.</div>';
                 return;
             }
 
@@ -271,10 +269,7 @@
         async function sendMessage() {
             const text = messageInput.value.trim();
 
-            if (!text || currentUsername === 'Gast') {
-                alert('Bitte geben Sie eine Nachricht ein und melden Sie sich zuerst mit einem Benutzernamen an!');
-                return;
-            }
+            if (!text) return; 
             
             // Nachricht an Supabase senden (INSERT)
             const { error } = await supabase
@@ -285,7 +280,7 @@
 
             if (error) {
                 console.error('Fehler beim Senden der Nachricht:', error);
-                alert('Fehler beim Senden. (Check RLS INSERT Policy)');
+                alert('Sende-Fehler. (Bitte RLS-INSERT-Policy prüfen)');
             } else {
                 messageInput.value = '';
             }
@@ -314,7 +309,7 @@
         });
 
         resetButton.addEventListener('click', () => {
-            const confirmed = confirm('Möchten Sie Ihren Benutzernamen wirklich zurücksetzen und sich neu anmelden? Dadurch wird Ihr lokaler Name gelöscht.');
+            const confirmed = confirm('Benutzername zurücksetzen? Sie müssen sich neu anmelden.');
             if (confirmed) {
                 localStorage.removeItem('chat_username'); 
                 window.location.reload(); 
